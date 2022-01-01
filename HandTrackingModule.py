@@ -1,6 +1,8 @@
 import cv2
 import mediapipe as mp
 import time
+import math
+import numpy as np
 
 
 class handDetector:
@@ -21,6 +23,7 @@ class handDetector:
             self.trackCon,
         )
         self.mpDraw = mp.solutions.drawing_utils
+        self.tipIds = [4, 8, 12, 16, 20]
 
     def findHands(self, img, draw=True):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -44,21 +47,38 @@ class handDetector:
         return img
 
     def findPosition(self, img, handNo=0, draw=True):
-
-        lmList = []
+        xList = []
+        yList = []
+        bbox = []
+        self.lmList = []
         if self.results.multi_hand_landmarks:
             myHand = self.results.multi_hand_landmarks[handNo]
             for id, lm in enumerate(myHand.landmark):
                 # print(id, lm)
                 h, w, c = img.shape
                 currX, currY = int(lm.x * w), int(lm.y * h)
-                print(id, currX, currY)
+                xList.append(currX)
+                yList.append(currY)
+                # print(id, currX, currY)
                 lmList.append([id, currX, currY])
                 if draw:
                     # print("wow")
                     cv2.circle(img, (currX, currY), 10, (81, 181, 248), cv2.FILLED)
 
-        return lmList
+        xmin, xmax = min(xList), max(xList)
+        ymin, ymax = min(yList), max(yList)
+        bbox = xmin, ymin, xmax, ymax
+
+        if draw:
+            cv2.rectangle(
+                img,
+                (xmin - 20, ymin - 20),
+                (xmax + 20, ymax + 20),
+                (81, 181, 248),
+                2,
+            )
+
+        return self.lmList, bbox
 
 
 def main():
@@ -70,9 +90,9 @@ def main():
     while True:
         success, img = cap.read()
         img = detector.findHands(img)
-        lmlist = detector.findPosition(img)
-        if len(lmlist) != 0:
-            print(lmlist[4])
+        lmList = detector.findPosition(img)
+        if len(lmList) != 0:
+            print(lmList[4])
 
         currTime = time.time()
         fps = 1 / (currTime - prevTime)
